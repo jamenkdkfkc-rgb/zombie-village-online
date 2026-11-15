@@ -707,6 +707,7 @@ function jump(){if(!running)return;if(P.y>P.gy+.001||P.vy>0)return;P.vy=5.6;crou
 function reload(){const w=WP[cur];if(!running||reloading||ammo>=w.mag||res<=0)return;reloading=true;rt=w.rl;noise(.05,5000,.25)}
 function cancelSprint(){sprintT=false;$('sb').classList.remove('on')}
 function shoot(){
+  NSC++;
   const w=WP[cur];ammo--;cd=w.rate;flash=.07;gunSnd(w);
   for(let p=0;p<w.pel;p++)hitscan((Math.random()*2-1)*sprd,(Math.random()*2-1)*sprd,w);
   const k=w.rec*(1-.35*P.cr)*(.7+Math.random()*.6);P.pitch=clamp(P.pitch+k,-.6,.6);P.yaw+=(Math.random()-.5)*w.rec*.7;recoilV=1;shk=Math.max(shk,w.pel>1?.7:.3);
@@ -1182,7 +1183,7 @@ addEventListener('blur',()=>{firing=false;trig=false});
 /* ===== ออนไลน์ co-op (เซิร์ฟเวอร์รีเลย์ WebSocket) ===== */
 const RELAY='wss://zombie-village-online.onrender.com';
 const NC=[[232,163,61],[90,169,230],[122,195,106],[201,119,232]];
-let MATES=[],MYID=Math.random().toString(36).slice(2,10),NWS=null,NROOM=null,NLASTSENT=0,NLASTKEY='';
+let MATES=[],MYID=Math.random().toString(36).slice(2,10),NWS=null,NROOM=null,NLASTSENT=0,NLASTKEY='',NSC=0;
 function nSet(t){const e=$('nst');if(e)e.textContent=t}
 function nColor(id){const s=String(id);return NC[(s.charCodeAt(s.length-1)||0)%4]}
 function nLeave(){
@@ -1202,15 +1203,17 @@ function nJoin(code){
     let d;try{d=JSON.parse(e.data)}catch(x){return}
     if(d.t==='joined'){nSet('เข้าห้อง '+code+' แล้ว กดเริ่มภารกิจเพื่อให้เพื่อนเห็นคุณ')}
     else if(d.t==='full'){nSet('ห้องนี้เต็มแล้ว (สูงสุด 4 คน)');nLeave()}
-    else if(d.t==='L'){MATES=d.l.filter(m=>m.id!==MYID)}
+    else if(d.t==='L'){const old=MATES;MATES=d.l.filter(m=>m.id!==MYID).map(m=>{const p=old.find(o=>o.id===m.id);m.ft=p?(p.sc!==m.sc?performance.now()+160:p.ft||0):0;return m})}
   };
   ws.onclose=()=>{if(NWS===ws){NWS=null;MATES=[];nSet('หลุดจากห้อง กดเข้าห้องอีกครั้งเพื่อเชื่อมต่อใหม่')}};
   ws.onerror=()=>nSet('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจลิงก์ RELAY');
 }
 function nSend(){
-  if(!NWS||NWS.readyState!==1||!running)return;
+  if(!NWS||NWS.readyState!==1)return;
+  const dead=P.hp<=0;
+  if(!running&&!dead)return;
   const now=Date.now();
-  const b={t:'p',x:+P.x.toFixed(2),y:+P.y.toFixed(2),z:+P.z.toFixed(2),yaw:+P.yaw.toFixed(2)};
+  const b={t:'p',x:+P.x.toFixed(2),y:+P.y.toFixed(2),z:+P.z.toFixed(2),yaw:+P.yaw.toFixed(2),of:outfit|0,w:String(cur||''),dead:dead,sc:NSC};
   const key=JSON.stringify(b);
   if(now-NLASTSENT<90)return;
   if(key===NLASTKEY&&now-NLASTSENT<500)return;
@@ -1220,16 +1223,35 @@ function nSend(){
 setInterval(nSend,90);
 function nCreate(){nJoin(String(1000+Math.floor(Math.random()*9000)))}
 function drawMate(m,d,r){
-  const s=F/d,f=fogT(d),col=nColor(m.id);U=s;
+  const s=F/d,f=fogT(d),col=nColor(m.id),o=(typeof OUT!=='undefined'&&OUT[m.of|0])||{p:col,c:col,v:[60,56,50]};U=s;
   const sx=W/2+r*s,yb=hor+(camh-(m.y||0))*s;
-  const C=c=>mx(c,f,0);
+  const C=c=>mx(c,f,0),skin=[216,170,134];
+  const fl=performance.now()<(m.ft||0);
   g.save();g.translate(sx,yb);
-  ze(0,0,.32,.1,'rgba(0,0,0,.35)');
-  zp([-.2,0,-.08,0,-.08,.85,-.2,.85],C([60,56,50]));
-  zp([.08,0,.2,0,.2,.85,.08,.85],C([60,56,50]));
-  zp([-.25,.85,.25,.85,.27,1.55,-.27,1.55],C(col));
-  zl(-.25,1.45,-.4,.95,.09,C(col));zl(.25,1.45,.4,.95,.09,C(col));
-  ze(0,1.72,.13,.15,C([226,190,160]));
+  ze(0,0,.4,.11,'rgba(0,0,0,.35)');
+  if(m.dead){
+    /* ท่านอนตาย */
+    zl(-.1,.18,1.0,.2,.2,C(o.c));
+    ze(1.12,.2,.14,.13,C(skin));
+    ze(1.12,.24,.1,.07,C([58,40,30]));
+  }else{
+    /* ขา */
+    for(const i of[-1,1]){zl(i*.1,.92,i*.12,.5,.17,C(o.p));zl(i*.12,.5,i*.12,.07,.135,C(o.p));ze(i*.12,.05,.095,.055,C([28,26,26]))}
+    /* ลำตัว + เสื้อเกราะ */
+    zp([-.2,1.42,.2,1.42,.18,.92,-.18,.92],C(o.c));
+    zp([-.21,1.4,.21,1.4,.16,.95,-.16,.95],C(o.v));
+    /* แขนถือปืน */
+    zl(-.24,1.38,.02,1.3,.1,C(o.c));zl(.24,1.38,.1,1.32,.1,C(o.c));
+    /* หัว + หมวก */
+    ze(0,1.6,.105,.125,C(skin));
+    ze(0,1.7,.13,.09,C(o.c));
+    zl(-.13,1.7,.13,1.7,.025,C([30,32,36]));
+    /* ปืน */
+    const gc=m.w==='ak47'?[150,90,44]:[44,48,52];
+    zp([.05,1.3,.75,1.3,.75,1.37,.05,1.37],C(gc));
+    ze(.76,1.335,.04,.04,C([20,20,22]));
+    if(fl)ze(.86,1.335,.16,.16,'rgba(255,200,90,.85)');
+  }
   g.restore();
   g.font='12px Sarabun,Tahoma,sans-serif';g.textAlign='center';g.fillStyle='#fff';g.fillText('เพื่อน',sx,yb-1.95*s);
 }
