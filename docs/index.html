@@ -1180,7 +1180,7 @@ addEventListener('keyup',e=>{keys[e.code]=false});
 addEventListener('blur',()=>{firing=false;trig=false});
 
 /* ===== ออนไลน์ co-op (เซิร์ฟเวอร์รีเลย์ WebSocket) ===== */
-const RELAY='wss://YOUR-APP.onrender.com';
+const RELAY='wss://zombie-village-online.onrender.com';
 const NC=[[232,163,61],[90,169,230],[122,195,106],[201,119,232]];
 let MATES=[],MYID=Math.random().toString(36).slice(2,10),NWS=null,NROOM=null,NLASTSENT=0,NLASTKEY='';
 function nSet(t){const e=$('nst');if(e)e.textContent=t}
