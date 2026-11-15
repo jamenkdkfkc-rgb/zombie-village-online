@@ -1120,7 +1120,10 @@ function render(t){
   for(const z of D){const e=rel(z);if(e.d>.25&&e.d<56)ITEMS.push({d:e.d,r:e.r,k:5,o:z})}
   for(const p of PK){const e=rel(p);if(e.d>.25&&e.d<56)ITEMS.push({d:e.d,r:e.r,k:6,o:p})}
   for(const p of PT){const e=rel(p);if(e.d>.25&&e.d<56)ITEMS.push({d:e.d,r:e.r,k:7,o:p})}
-  if(typeof MATES!=='undefined')for(const m of MATES){const e=rel(m);if(e.d>.5&&e.d<70)ITEMS.push({d:e.d,r:e.r,k:9,o:m})}
+  if(typeof MATES!=='undefined')MATES.forEach((m,i)=>{
+    /* ก่อนเข้าเกม (ในล็อบบี้) ให้เพื่อนยืนอยู่ข้างตัวเราเลย */
+    if(!running){ITEMS.push({d:3.2+i*.5,r:1.6+i*1.1,k:9,o:m});return}
+    const e=rel(m);if(e.d>.5&&e.d<600)ITEMS.push({d:e.d,r:e.r,k:9,o:m})});
   if(tp>.05){const e=rel(P);if(e.d>.3)ITEMS.push({d:e.d,r:e.r,k:8,o:P})}
   for(const it of PAT)drawFlat(it);vilGround();vilItems();
   ITEMS.sort((a,b)=>b.d-a.d);
@@ -1291,8 +1294,21 @@ function drawMate(m,d,r){
     if(fl)ze(.86,1.335,.16,.16,'rgba(255,200,90,.85)');
   }
   g.restore();
-  g.font='12px Sarabun,Tahoma,sans-serif';g.textAlign='center';g.fillStyle='#fff';g.fillText('เพื่อน',sx,yb-1.95*s);
+  g.font='bold 15px Sarabun,Tahoma,sans-serif';g.textAlign='center';g.fillStyle='#fff';g.strokeStyle='rgba(0,0,0,.6)';g.lineWidth=3;
+  const lbl='เพื่อน'+(d>8?' '+Math.round(d)+' ม.':'');g.strokeText(lbl,sx,yb-1.95*s);g.fillText(lbl,sx,yb-1.95*s);
 }
+/* ตัวชี้ทิศทางเพื่อนที่อยู่ไกล (ลูกศรมุมจอพร้อมระยะทาง) */
+const MK=document.createElement('div');
+MK.style.cssText='position:fixed;top:42%;z-index:9;pointer-events:none;background:rgba(0,0,0,.55);color:#fff;padding:4px 9px;border-radius:8px;font:600 14px Sarabun,Tahoma,sans-serif;display:none';
+document.body.appendChild(MK);
+setInterval(()=>{
+  if(typeof MATES==='undefined'||!MATES.length||!running||!NROOM){MK.style.display='none';return}
+  let best=null;for(const m of MATES){const e=rel(m);if(e.d>=60&&(!best||e.d<best.d))best={d:e.d,r:e.r}}
+  if(!best){MK.style.display='none';return}
+  const left=best.r<0;
+  MK.style.display='block';MK.style.left=left?'8px':'auto';MK.style.right=left?'auto':'8px';
+  MK.textContent=(left?'◀ ':'')+'เพื่อน '+Math.round(best.d)+' ม.'+(left?'':' ▶');
+},200);
 $('ncr').addEventListener('click',nCreate);
 $('nj').addEventListener('click',()=>{const c=($('nci').value||'').trim();if(!/^\d{4}$/.test(c)){nSet('ใส่รหัส 4 หลักให้ถูกต้อง');return}nJoin(c)});
 
